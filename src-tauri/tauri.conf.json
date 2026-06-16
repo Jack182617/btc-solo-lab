@@ -1,0 +1,52 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "BTC Solo Lab",
+  "version": "0.1.0",
+  "identifier": "com.local.btcsololab",
+  "build": {
+    "beforeDevCommand": "npm run dev:vite",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build:vite",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "BTC Solo Lab",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 1000,
+        "minHeight": 700
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "img-src": "'self' asset: http://asset.localhost data:",
+        "style-src": "'self'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {
+      "../scripts/check-ckpool-user.sh": "runtime/scripts/check-ckpool-user.sh",
+      "../scripts/lib/miner-env.sh": "runtime/scripts/lib/miner-env.sh",
+      "../scripts/preflight.sh": "runtime/scripts/preflight.sh",
+      "../scripts/run-solo-miner.sh": "runtime/scripts/run-solo-miner.sh",
+      "../scripts/smoke-start.sh": "runtime/scripts/smoke-start.sh",
+      "../scripts/status.sh": "runtime/scripts/status.sh",
+      "../configs/miner.env.example": "runtime/configs/miner.env.example",
+      "../vendor/cpuminer-multi/cpuminer": "runtime/vendor/cpuminer-multi/cpuminer"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
