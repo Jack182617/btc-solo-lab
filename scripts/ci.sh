@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 ci_miner_bin="$ROOT_DIR/vendor/cpuminer-multi/cpuminer"
+ci_env_file="$ROOT_DIR/configs/miner.env.example"
 created_ci_miner_stub=0
 if [[ ! -x "$ci_miner_bin" ]]; then
   mkdir -p "$(dirname "$ci_miner_bin")"
@@ -54,6 +55,7 @@ grep -qxF 'vendor/cpuminer-multi/cpuminer' .gitignore
 
 DRY_RUN=1 \
 REQUIRE_PREFLIGHT=0 \
+ENV_FILE="$ci_env_file" \
 MINER_BIN="$ci_miner_bin" \
 BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
 scripts/run-solo-miner.sh >/dev/null
@@ -61,6 +63,7 @@ scripts/run-solo-miner.sh >/dev/null
 if POOL_PASSWORD=supersecret \
   DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \
+  ENV_FILE="$ci_env_file" \
   MINER_BIN="$ci_miner_bin" \
   BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
   scripts/run-solo-miner.sh 2>/dev/null | grep -F 'supersecret' >/dev/null; then
@@ -70,6 +73,7 @@ fi
 
 if DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \
+  ENV_FILE="$ci_env_file" \
   MINER_BIN=/bin/echo \
   BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
   scripts/run-solo-miner.sh >/dev/null 2>&1; then
@@ -79,6 +83,7 @@ fi
 
 if DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \
+  ENV_FILE="$ci_env_file" \
   MINER_BIN="$ci_miner_bin" \
   BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb \
   scripts/run-solo-miner.sh >/dev/null 2>&1; then
