@@ -4,6 +4,30 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+ci_miner_bin="$ROOT_DIR/vendor/cpuminer-multi/cpuminer"
+created_ci_miner_stub=0
+if [[ ! -x "$ci_miner_bin" ]]; then
+  mkdir -p "$(dirname "$ci_miner_bin")"
+  cat > "$ci_miner_bin" <<'STUB'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--help" ]]; then
+  echo "cpuminer CI stub"
+  exit 0
+fi
+echo "cpuminer CI stub must not be started." >&2
+exit 99
+STUB
+  chmod +x "$ci_miner_bin"
+  created_ci_miner_stub=1
+fi
+
+cleanup() {
+  if [[ "$created_ci_miner_stub" == "1" ]]; then
+    rm -f "$ci_miner_bin"
+  fi
+}
+trap cleanup EXIT
+
 npm run build
 cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 cargo test --manifest-path src-tauri/Cargo.toml
@@ -28,34 +52,16 @@ grep -qxF 'configs/miner.env' .gitignore
 grep -qxF 'vendor/cpuminer-multi/' .gitignore
 grep -qxF 'vendor/cpuminer-multi/cpuminer' .gitignore
 
-stub_dir="$ROOT_DIR/logs/.ci"
-cleanup() {
-  rm -rf "$stub_dir"
-}
-trap cleanup EXIT
-mkdir -p "$stub_dir"
-
-cat > "$stub_dir/cpuminer" <<'STUB'
-#!/usr/bin/env bash
-if [[ "${1:-}" == "--help" ]]; then
-  echo "cpuminer stub"
-  exit 0
-fi
-echo "cpuminer stub must not be started during CI." >&2
-exit 99
-STUB
-chmod +x "$stub_dir/cpuminer"
-
 DRY_RUN=1 \
 REQUIRE_PREFLIGHT=0 \
-MINER_BIN="$stub_dir/cpuminer" \
+MINER_BIN="$ci_miner_bin" \
 BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
 scripts/run-solo-miner.sh >/dev/null
 
 if POOL_PASSWORD=supersecret \
   DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \
-  MINER_BIN="$stub_dir/cpuminer" \
+  MINER_BIN="$ci_miner_bin" \
   BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
   scripts/run-solo-miner.sh 2>/dev/null | grep -F 'supersecret' >/dev/null; then
   echo "Dry-run output leaked POOL_PASSWORD." >&2
@@ -73,7 +79,7 @@ fi
 
 if DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \
-  MINER_BIN="$stub_dir/cpuminer" \
+  MINER_BIN="$ci_miner_bin" \
   BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNb \
   scripts/run-solo-miner.sh >/dev/null 2>&1; then
   echo "Expected invalid Base58Check BTC_ADDRESS guard to fail." >&2
