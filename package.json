@@ -2,6 +2,20 @@
   "name": "btc-solo-lab",
   "version": "0.1.0",
   "license": "GPL-2.0-or-later",
+  "description": "Real Bitcoin mainnet solo mining lab for safe desktop and CLI experiments",
+  "homepage": "https://github.com/Jack182617/btc-solo-lab#readme",
+  "bugs": {
+    "url": "https://github.com/Jack182617/btc-solo-lab/issues"
+  },
+  "keywords": [
+    "bitcoin",
+    "mining",
+    "solo-mining",
+    "tauri",
+    "rust",
+    "react",
+    "education"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Jack182617/btc-solo-lab.git"
