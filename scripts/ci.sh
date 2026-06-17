@@ -70,6 +70,22 @@ if POOL_PASSWORD=supersecret \
   echo "Dry-run output leaked POOL_PASSWORD." >&2
   exit 1
 fi
+ci_redaction_output="$(BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa \
+  WORKER_NAME=ci-worker \
+  POOL_PASSWORD=supersecret \
+  DRY_RUN=1 \
+  REQUIRE_PREFLIGHT=0 \
+  ENV_FILE="$ci_env_file" \
+  MINER_BIN="$ci_miner_bin" \
+  scripts/run-solo-miner.sh 2>/dev/null)"
+if grep -F '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' <<<"$ci_redaction_output" >/dev/null; then
+  echo "Dry-run output leaked a full BTC address." >&2
+  exit 1
+fi
+if ! grep -F '1A1zP1eP...DivfNa.ci-worker' <<<"$ci_redaction_output" >/dev/null; then
+  echo "Expected dry-run output to show only BTC address preview." >&2
+  exit 1
+fi
 
 if DRY_RUN=1 \
   REQUIRE_PREFLIGHT=0 \

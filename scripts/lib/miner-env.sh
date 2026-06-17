@@ -93,6 +93,16 @@ load_miner_env() {
   done
 }
 
+miner_harden_env_permissions() {
+  local env_file="$1"
+  [[ -f "$env_file" ]] || return 0
+  [[ "$(basename "$env_file")" == "miner.env.example" ]] && return 0
+
+  if ! chmod go-rwx "$env_file" 2>/dev/null; then
+    echo "WARN could not restrict config permissions: $env_file" >&2
+  fi
+}
+
 miner_abs_path() {
   local path="$1"
   local base_dir="$2"
@@ -474,6 +484,51 @@ miner_validate_base58check_address() {
   fi
 }
 
+miner_preview_btc_address() {
+  local address="$1"
+  local length="${#address}"
+  if (( length <= 14 )); then
+    printf '%s\n' "$address"
+  else
+    printf '%s...%s\n' "${address:0:8}" "${address:length-6:6}"
+  fi
+}
+
+miner_looks_like_btc_address() {
+  local address="$1"
+  local lower
+  lower="$(printf '%s' "$address" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$lower" == bc1* ]]; then
+    (( ${#address} >= 14 && ${#address} <= 90 )) || return 1
+    [[ "$lower" =~ ^bc1[ac-hj-np-z02-9]+$ ]]
+    return
+  fi
+  [[ "$address" =~ ^[13][123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{25,61}$ ]]
+}
+
+miner_redact_pool_username() {
+  local value="$1"
+  local address worker redacted
+  if [[ "$value" == *.* ]]; then
+    address="${value%%.*}"
+    worker="${value#*.}"
+  else
+    address="$value"
+    worker=""
+  fi
+
+  if miner_looks_like_btc_address "$address"; then
+    redacted="$(miner_preview_btc_address "$address")"
+    if [[ -n "$worker" ]]; then
+      printf '%s.%s\n' "$redacted" "$worker"
+    else
+      printf '%s\n' "$redacted"
+    fi
+  else
+    printf '%s\n' "$value"
+  fi
+}
+
 miner_print_redacted_command() {
   local args=("$@")
   local redacted=()
@@ -495,8 +550,22 @@ miner_print_redacted_command() {
         key="${arg%%=*}"
         redacted+=("$key=REDACTED")
         ;;
-      *)
+      -u|--user|--username)
         redacted+=("$arg")
+        if (( i + 1 < ${#args[@]} )); then
+          i=$(( i + 1 ))
+          redacted+=("$(miner_redact_pool_username "${args[i]}")")
+        fi
+        ;;
+      -u?*)
+        redacted+=("-u$(miner_redact_pool_username "${arg#-u}")")
+        ;;
+      --user=*|--username=*)
+        key="${arg%%=*}"
+        redacted+=("$key=$(miner_redact_pool_username "${arg#*=}")")
+        ;;
+      *)
+        redacted+=("$(miner_redact_pool_username "$arg")")
         ;;
     esac
   done
@@ -507,6 +576,37 @@ miner_print_redacted_command() {
 
 miner_redact_sensitive_args() {
   awk '
+    function looks_like_btc_address(value, lower) {
+      lower = tolower(value)
+      if (lower ~ /^bc1[ac-hj-np-z02-9]{11,87}$/) {
+        return 1
+      }
+      return value ~ /^[13][123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{25,61}$/
+    }
+    function preview_btc_address(value, length_value) {
+      length_value = length(value)
+      if (length_value <= 14) {
+        return value
+      }
+      return substr(value, 1, 8) "..." substr(value, length_value - 5, 6)
+    }
+    function redact_pool_username(value, dot, address, worker) {
+      dot = index(value, ".")
+      if (dot > 0) {
+        address = substr(value, 1, dot - 1)
+        worker = substr(value, dot + 1)
+      } else {
+        address = value
+        worker = ""
+      }
+      if (looks_like_btc_address(address)) {
+        if (worker != "") {
+          return preview_btc_address(address) "." worker
+        }
+        return preview_btc_address(address)
+      }
+      return value
+    }
     {
       for (i = 1; i <= NF; i++) {
         if ($i == "-p" || $i == "--pass" || $i == "--password") {
@@ -518,6 +618,18 @@ miner_redact_sensitive_args() {
           $i = "-pREDACTED"
         } else if ($i ~ /^--(pass|password)=/) {
           sub(/=.*/, "=REDACTED", $i)
+        } else if ($i == "-u" || $i == "--user" || $i == "--username") {
+          if (i + 1 <= NF) {
+            $(i + 1) = redact_pool_username($(i + 1))
+            i++
+          }
+        } else if ($i ~ /^-u.+/) {
+          $i = "-u" redact_pool_username(substr($i, 3))
+        } else if ($i ~ /^--(user|username)=/) {
+          split($i, parts, "=")
+          $i = parts[1] "=" redact_pool_username(substr($i, length(parts[1]) + 2))
+        } else {
+          $i = redact_pool_username($i)
         }
       }
       print

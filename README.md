@@ -33,7 +33,7 @@ The goal is protocol understanding, not revenue. A Mac CPU is effectively a lott
 - BTC mainnet address checksum/network validation for `bc1...`, `1...`, and `3...`.
 - Path guards for miner binary, log directory, and log file.
 - Existing-miner guard before real starts.
-- Pool password redaction in dry-run output, process views, and log tails.
+- Pool password redaction and BTC address previewing in dry-run output, process views, and log tails.
 - Local-only runtime configuration; real `configs/miner.env` is ignored by Git.
 - Release audit for packaged macOS app resources and signing expectations.
 

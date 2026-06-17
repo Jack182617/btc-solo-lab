@@ -10,6 +10,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   echo "Create it from configs/miner.env.example first." >&2
   exit 1
 fi
+miner_harden_env_permissions "$ENV_FILE"
 
 config_keys=(
   BTC_ADDRESS
@@ -26,15 +27,16 @@ miner_validate_btc_address "$BTC_ADDRESS" || {
 }
 
 url="https://solo.ckpool.org/users/$BTC_ADDRESS"
+address_preview="$(miner_preview_btc_address "$BTC_ADDRESS")"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-echo "Fetching $url"
+echo "Fetching CKPool user stats for $address_preview"
 http_code="$(curl -sS --connect-timeout 5 --max-time 15 -o "$tmp" -w "%{http_code}" "$url" || true)"
 
 case "$http_code" in
   200)
-    cat "$tmp"
+    awk -v address="$BTC_ADDRESS" -v preview="$address_preview" '{ gsub(address, preview); print }' "$tmp"
     echo
     ;;
   404)

@@ -81,6 +81,15 @@ if ! POOL_PASSWORD=supersecret DRY_RUN=1 REQUIRE_PREFLIGHT=0 scripts/run-solo-mi
   echo "Expected dry-run output to redact POOL_PASSWORD." >&2
   exit 1
 fi
+redaction_output="$(BTC_ADDRESS=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa WORKER_NAME=verify-worker POOL_PASSWORD=supersecret DRY_RUN=1 REQUIRE_PREFLIGHT=0 scripts/run-solo-miner.sh 2>/dev/null)"
+if grep -F '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' <<<"$redaction_output" >/dev/null; then
+  echo "Dry-run output leaked a full BTC address." >&2
+  exit 1
+fi
+if ! grep -F '1A1zP1eP...DivfNa.verify-worker' <<<"$redaction_output" >/dev/null; then
+  echo "Expected dry-run output to show only BTC address preview." >&2
+  exit 1
+fi
 
 if DRY_RUN=1 REQUIRE_PREFLIGHT=0 LOG_FILE=/private/tmp/btc-solo-lab-escape.log scripts/run-solo-miner.sh >/dev/null 2>&1; then
   echo "Expected external LOG_FILE guard to fail." >&2
@@ -139,7 +148,7 @@ if ps -ax -o args >/dev/null 2>&1; then
   probe_miner="$probe_dir/cpuminer-probe"
   printf '#!/usr/bin/env bash\nsleep 3\n' > "$probe_miner"
   chmod +x "$probe_miner"
-  "$probe_miner" -p secret-status-password 3 >/dev/null 2>&1 &
+  "$probe_miner" -u 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa.status-worker -p secret-status-password 3 >/dev/null 2>&1 &
   probe_pid=$!
   cleanup_probe() {
     kill "$probe_pid" >/dev/null 2>&1 || true
@@ -169,6 +178,15 @@ if ps -ax -o args >/dev/null 2>&1; then
   fi
   if ! MINER_BIN="$probe_miner" scripts/status.sh | grep -F -- '-p REDACTED' >/dev/null; then
     echo "Expected status output to redact process password argument." >&2
+    exit 1
+  fi
+  status_output="$(MINER_BIN="$probe_miner" scripts/status.sh)"
+  if grep -F '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa' <<<"$status_output" >/dev/null; then
+    echo "Status output leaked a full BTC address." >&2
+    exit 1
+  fi
+  if ! grep -F '1A1zP1eP...DivfNa.status-worker' <<<"$status_output" >/dev/null; then
+    echo "Expected status output to show only BTC address preview." >&2
     exit 1
   fi
   wait "$probe_pid" 2>/dev/null || true

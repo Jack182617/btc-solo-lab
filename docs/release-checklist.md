@@ -19,7 +19,7 @@ Use this checklist before publishing a GitHub release or distributing a macOS bu
 - [ ] Real starts still require preflight unless explicitly overridden.
 - [ ] Address validation rejects testnet, regtest, and bad checksum addresses.
 - [ ] Path guards reject project escapes and symlink escapes.
-- [ ] Dry-run and status output redact pool passwords.
+- [ ] Dry-run, status, and log-tail output redact pool passwords and show only BTC address previews.
 - [ ] Real start refuses to run when an existing miner process is detected.
 
 ## macOS Packaging

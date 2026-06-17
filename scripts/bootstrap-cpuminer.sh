@@ -6,6 +6,7 @@ ENV_FILE="${ENV_FILE:-$ROOT_DIR/configs/miner.env}"
 source "$ROOT_DIR/scripts/lib/miner-env.sh"
 
 if [[ -f "$ENV_FILE" ]]; then
+  miner_harden_env_permissions "$ENV_FILE"
   config_keys=(
     BTC_ADDRESS
     WORKER_NAME

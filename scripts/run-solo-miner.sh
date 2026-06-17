@@ -10,6 +10,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   echo "Create it from configs/miner.env.example first." >&2
   exit 1
 fi
+miner_harden_env_permissions "$ENV_FILE"
 
 config_keys=(
   BTC_ADDRESS
@@ -229,7 +230,7 @@ say "Run id: $run_id"
 say "Log: $LOG_FILE"
 say "Log retention: $LOG_RETENTION"
 say "Pool: $stratum_url"
-say "User: $username"
+say "User: $(miner_redact_pool_username "$username")"
 say "Algo: $ALGO"
 say "Threads: $THREADS"
 say "Throttle mode: $THROTTLE_MODE"
@@ -273,10 +274,10 @@ tail_pid=$!
 
 cleanup_pid() {
   local pid="$1"
-	  if kill -0 "$pid" >/dev/null 2>&1; then
-	    kill -CONT "$pid" >/dev/null 2>&1 || true
-	    kill -TERM "$pid" >/dev/null 2>&1 || true
-	    sleep 1
+  if kill -0 "$pid" >/dev/null 2>&1; then
+    kill -CONT "$pid" >/dev/null 2>&1 || true
+    kill -TERM "$pid" >/dev/null 2>&1 || true
+    sleep 1
     if kill -0 "$pid" >/dev/null 2>&1; then
       kill -KILL "$pid" >/dev/null 2>&1 || true
     fi
@@ -302,9 +303,9 @@ sleep_checked() {
 }
 
 if [[ "$THROTTLE_MODE" == "cpulimit" ]]; then
-	  if [[ -n "$TIME_LIMIT_SECONDS" ]]; then
-	    miner_args+=(--time-limit="$TIME_LIMIT_SECONDS")
-	  fi
+  if [[ -n "$TIME_LIMIT_SECONDS" ]]; then
+    miner_args+=(--time-limit="$TIME_LIMIT_SECONDS")
+  fi
   command -v cpulimit >/dev/null 2>&1 || {
     echo "cpulimit is missing." | tee -a "$LOG_FILE" >&2
     exit 1

@@ -180,6 +180,6 @@ MOUNT_POINT=""
 
 shasum -a 256 "$DMG_PATH"
 if [[ "${RUN_RELEASE_AUDIT:-1}" == "1" ]]; then
-  REQUIRE_DISTRIBUTION="$NOTARIZE" "$ROOT_DIR/scripts/audit-release.sh"
+  REQUIRE_DISTRIBUTION="$NOTARIZE" bash "$ROOT_DIR/scripts/audit-release.sh"
 fi
 echo "macOS package ready: $DMG_PATH"

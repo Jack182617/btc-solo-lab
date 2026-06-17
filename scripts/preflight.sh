@@ -10,6 +10,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   echo "Create it from configs/miner.env.example first." >&2
   exit 1
 fi
+miner_harden_env_permissions "$ENV_FILE"
 
 config_keys=(
   BTC_ADDRESS

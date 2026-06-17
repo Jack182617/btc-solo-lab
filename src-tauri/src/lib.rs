@@ -628,7 +628,8 @@ fn validate_address_syntax(address: &str) -> Result<(), String> {
     {
         return Err("address contains invalid characters".to_string());
     }
-    if address.starts_with("bc1") {
+    let lower = address.to_ascii_lowercase();
+    if lower.starts_with("bc1") {
         return validate_bech32_address(address);
     }
     if address.starts_with('1') || address.starts_with('3') {
@@ -920,8 +921,19 @@ fn redact_sensitive_args(line: &str) -> String {
                 index += 2;
                 continue;
             }
+        } else if matches!(part, "-u" | "--user" | "--username") {
+            redacted.push(part.to_string());
+            if index + 1 < parts.len() {
+                redacted.push(redact_pool_username(parts[index + 1]));
+                index += 2;
+                continue;
+            }
         } else if part.starts_with("-p") && part.len() > 2 {
             redacted.push("-pREDACTED".to_string());
+            index += 1;
+            continue;
+        } else if part.starts_with("-u") && part.len() > 2 {
+            redacted.push(format!("-u{}", redact_pool_username(&part[2..])));
             index += 1;
             continue;
         } else if let Some((key, _value)) = part.split_once('=')
@@ -930,11 +942,34 @@ fn redact_sensitive_args(line: &str) -> String {
             redacted.push(format!("{key}=REDACTED"));
             index += 1;
             continue;
+        } else if let Some((key, value)) = part.split_once('=')
+            && matches!(key, "--user" | "--username")
+        {
+            redacted.push(format!("{key}={}", redact_pool_username(value)));
+            index += 1;
+            continue;
         }
-        redacted.push(part.to_string());
+        redacted.push(redact_pool_username(part));
         index += 1;
     }
     redacted.join(" ")
+}
+
+fn redact_pool_username(value: &str) -> String {
+    let (address, worker) = value
+        .split_once('.')
+        .map(|(address, worker)| (address, Some(worker)))
+        .unwrap_or((value, None));
+    if validate_address_syntax(address).is_ok() {
+        let redacted = address_preview(address);
+        if let Some(worker) = worker
+            && !worker.is_empty()
+        {
+            return format!("{redacted}.{worker}");
+        }
+        return redacted;
+    }
+    value.to_string()
 }
 
 fn redact_sensitive_text(text: &str) -> String {
@@ -1215,6 +1250,13 @@ mod tests {
     }
 
     #[test]
+    fn config_update_accepts_uppercase_bech32_mainnet_address() {
+        let mut update = valid_update();
+        update.btc_address = update.btc_address.to_ascii_uppercase();
+        assert!(validate_update(&update).is_ok());
+    }
+
+    #[test]
     fn config_update_rejects_testnet_address() {
         let mut update = valid_update();
         update.btc_address = "tb1q9clzaht7mrl2vaa0e2u53v59n5l2dgj0842uuz".to_string();
@@ -1265,6 +1307,19 @@ mod tests {
         assert!(!redacted.contains("other"));
         assert!(redacted.contains("-p REDACTED"));
         assert!(redacted.contains("--password=REDACTED"));
+    }
+
+    #[test]
+    fn redacts_pool_username_address_from_outputs() {
+        let full_address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+        let text = format!(
+            "User: {full_address}.mac-cpu\nCommand: /miner -u {full_address}.mac-cpu --user={full_address}.second -p secret"
+        );
+        let redacted = redact_sensitive_text(&text);
+        assert!(!redacted.contains(full_address));
+        assert!(redacted.contains("1A1zP1eP...DivfNa.mac-cpu"));
+        assert!(redacted.contains("--user=1A1zP1eP...DivfNa.second"));
+        assert!(redacted.contains("-p REDACTED"));
     }
 
     #[test]

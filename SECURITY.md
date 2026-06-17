@@ -14,7 +14,7 @@ Please report issues that can affect local safety, privacy, or release integrity
 - BTC address validation bypasses.
 - Path traversal or symlink bypasses for `MINER_BIN`, `LOG_DIR`, or `LOG_FILE`.
 - Command injection in config parsing or script execution.
-- Pool password leakage in dry-run output, logs, process views, or UI.
+- Pool password leakage or full BTC address exposure in dry-run output, logs, process views, or UI.
 - Ability to start unbounded or multi-threaded mining without explicit opt-in.
 - Failure to stop the app-managed miner process.
 - Packaging that bundles real config, development scripts, or unexpected runtime files.
